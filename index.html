@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Convolution Explorer</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>Convolution Explorer</h1>
+    <p class="subtitle">Draw on the input grid (or upload an image) and watch a 3×3 filter slide across to produce the output. Pick a filter to see what each kernel learns to detect.</p>
+  </header>
+
+  <div class="filters" id="filters"></div>
+
+  <div class="grids">
+    <div class="panel">
+      <h2>Input</h2>
+      <canvas id="input-canvas" class="grid-canvas" width="320" height="320"></canvas>
+      <div class="grid-hint">Click or drag to draw · right-click to erase</div>
+      <div class="brush-control">
+        <span>Brush</span>
+        <input type="range" id="brush" min="0" max="1" step="0.05" value="1">
+      </div>
+      <div class="grid-note">Uploaded images are converted to grayscale.</div>
+    </div>
+
+    <div class="panel kernel-panel">
+      <h2>Kernel</h2>
+      <div class="kernel" id="kernel"></div>
+      <div class="kernel-note">Edges use zero padding.</div>
+    </div>
+
+    <div class="panel">
+      <h2>Output</h2>
+      <canvas id="output-canvas" class="grid-canvas output" width="320" height="320"></canvas>
+      <div class="grid-hint">Updates live as you draw</div>
+    </div>
+  </div>
+
+  <div class="panel calc-panel">
+    <h2>Calculation</h2>
+    <div class="calc-content" id="calc-content">
+      <div class="calc-placeholder">Press <strong>▶ Animate</strong> to step through each output pixel. Pixel values are shown as luminance (0–255).</div>
+    </div>
+  </div>
+
+  <div class="controls">
+    <button class="ctrl-btn" id="clear-btn">Clear</button>
+    <label class="ctrl-btn upload-label">
+      Upload Image
+      <input type="file" id="upload-input" accept="image/*">
+    </label>
+    <button class="ctrl-btn primary" id="play-btn">▶ Animate</button>
+    <div class="speed-group">
+      <span>Speed</span>
+      <input type="range" id="speed" min="15" max="350" step="5" value="80">
+    </div>
+  </div>
+</main>
+
+<script src="app.js"></script>
+</body>
+</html>
