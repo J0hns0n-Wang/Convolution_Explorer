@@ -698,7 +698,7 @@ h1 {
   .activation-grid {
     grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
   }
-  .modal-canvas {
+  .modal-canvas-container {
     width: 240px;
     height: 240px;
   }
@@ -729,8 +729,9 @@ h1 {
   inset: 0;
   width: 100%;
   height: 100%;
+  background: transparent; /* must be transparent so the underlay shows through */
   opacity: 0.75;
-  mix-blend-mode: screen; /* This blends the heatmap nicely over the grayscale */
+  mix-blend-mode: screen;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -761,4 +762,287 @@ h1 {
 .cnn-input-canvas {
   cursor: crosshair;
   touch-action: none;
+}
+
+/* ─── Modal nav (prev/next channel) ─────────────────── */
+.modal-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-nav-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s;
+}
+
+.modal-nav-btn:hover:not(:disabled) { border-color: #b3b3ad; }
+.modal-nav-btn:disabled { opacity: 0.35; cursor: default; }
+
+.modal-counter {
+  font-size: 12px;
+  color: var(--muted);
+  min-width: 52px;
+  text-align: center;
+}
+
+.modal-stats {
+  display: block;
+  margin-top: 8px;
+  font-size: 11px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+/* ─── Step-by-step layer lock overlay ──────────────── */
+.layer-lock {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  background: rgba(250, 250, 247, 0.90);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  transition: opacity 0.35s ease;
+}
+
+.layer-lock.unlocking { opacity: 0; pointer-events: none; }
+
+.layer-lock-inner {
+  text-align: center;
+  padding: 24px;
+  max-width: 300px;
+}
+
+.layer-lock-icon { font-size: 32px; margin-bottom: 12px; }
+
+.layer-lock-msg {
+  font-size: 14px;
+  color: var(--muted);
+  margin: 0 0 16px;
+  line-height: 1.5;
+}
+
+.layer-unlock-btn {
+  background: var(--accent);
+  border: none;
+  color: white;
+  padding: 10px 24px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s;
+}
+
+.layer-unlock-btn:hover { background: #8e1414; }
+
+/* ─── Layer stats bar ───────────────────────────────── */
+.layer-stats {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+  align-self: stretch;
+}
+
+.stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+  cursor: default;
+}
+
+.stat-warn {
+  border-color: #e8a030;
+  color: #b37820;
+}
+
+/* ─── Tile wrapper and channel label ────────────────── */
+.tile-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.tile-label {
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 3px;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  line-height: 1;
+}
+
+/* ─── Draw mode active state ────────────────────────── */
+.cnn-draw-active {
+  outline: 2px solid var(--accent) !important;
+  outline-offset: 2px;
+  cursor: crosshair !important;
+}
+
+.cnn-draw-controls {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ─── Tiles-per-layer control ───────────────────────── */
+.tiles-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+  font-size: 13px;
+}
+
+.tiles-label { color: var(--muted); }
+
+.tiles-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s, background .15s;
+}
+
+.tiles-btn:hover { border-color: #b3b3ad; }
+
+.tiles-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+/* ─── Output dimensions panel ───────────────────────── */
+.dim-panel {
+  align-items: stretch;
+  margin-bottom: 20px;
+}
+
+.dim-layout {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 24px;
+  align-items: start;
+  width: 100%;
+}
+
+.dim-sliders {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 200px;
+}
+
+.dim-slider-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dim-label {
+  font-size: 13px;
+  color: var(--text);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.dim-label strong { font-weight: 600; }
+
+.dim-slider-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.conv-presets {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.presets-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+.conv-preset-btn {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color .15s, background .15s;
+}
+
+.conv-preset-btn:hover { border-color: #b3b3ad; }
+
+.conv-preset-btn.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: white;
+}
+
+.dim-formula {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 14px;
+  line-height: 2.1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.dim-line { white-space: pre; }
+
+/* Variable color coding matching the screenshot */
+.c-N { color: #2f5fb3; font-weight: 600; }
+.c-K { color: #b3402f; font-weight: 600; }
+.c-S { color: #2a862a; font-weight: 600; }
+.c-P { color: #7b2fb3; font-weight: 600; }
+
+.dim-result {
+  font-weight: 700;
+  color: var(--text);
+  background: var(--panel);
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 0 6px;
+}
+
+@media (max-width: 820px) {
+  .dim-layout { grid-template-columns: 1fr; }
 }

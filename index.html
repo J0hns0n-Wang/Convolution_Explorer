@@ -81,12 +81,36 @@
           </div>
         </div>
 
+        <!-- Output dimensions: N, K, S, P formula + controls -->
+        <div class="panel dim-panel">
+          <h2>Output Dimensions</h2>
+          <div class="dim-layout">
+            <div class="dim-sliders">
+              <div class="dim-slider-row">
+                <label class="dim-label">Stride <span class="c-S">S</span> = <strong id="stride-val">1</strong></label>
+                <input type="range" id="stride" min="1" max="4" step="1" value="1" />
+              </div>
+              <div class="dim-slider-row">
+                <label class="dim-label">Padding <span class="c-P">P</span> = <strong id="padding-val">0</strong></label>
+                <input type="range" id="padding" min="0" max="3" step="1" value="0" />
+              </div>
+              <div class="conv-presets">
+                <span class="presets-label">Presets:</span>
+                <button class="conv-preset-btn active" data-p="0" data-s="1">Valid</button>
+                <button class="conv-preset-btn" data-p="1" data-s="1">Same</button>
+                <button class="conv-preset-btn" data-p="0" data-s="2">Halving</button>
+                <button class="conv-preset-btn" data-p="1" data-s="2">Strided</button>
+              </div>
+            </div>
+            <div class="dim-formula" id="dim-formula"></div>
+          </div>
+        </div>
+
         <div class="panel calc-panel">
           <h2>Calculation</h2>
           <div class="calc-content" id="calc-content">
             <div class="calc-placeholder">
-              Press <strong>▶ Animate</strong> to step through each output
-              pixel. Pixel values are shown as 0–255.
+              Press <strong>▶ Animate</strong> or <strong>Step</strong> to walk through each output pixel. Values shown as 0–255.
             </div>
           </div>
         </div>
@@ -98,6 +122,7 @@
             <input type="file" id="upload-input" accept="image/*" />
           </label>
           <button class="ctrl-btn primary" id="play-btn">▶ Animate</button>
+          <button class="ctrl-btn" id="step-btn">Step</button>
           <div class="speed-group">
             <span>Speed</span>
             <input
@@ -173,9 +198,6 @@
             <section class="layer-section panel" data-layer="0">
               <div class="layer-header">
                 <h3>Layer 1 · Edges &amp; Orientations</h3>
-                <span class="learned-tag"
-                  >learned from data, not hand-designed</span
-                >
               </div>
               <p class="layer-desc">
                 Earliest filters fire on simple structure: edges, corners, color
@@ -189,9 +211,6 @@
             <section class="layer-section panel" data-layer="1">
               <div class="layer-header">
                 <h3>Layer 2 · Textures &amp; Patterns</h3>
-                <span class="learned-tag"
-                  >learned from data, not hand-designed</span
-                >
               </div>
               <p class="layer-desc">
                 Mid-level filters combine edges into textures and repeating
@@ -205,9 +224,6 @@
             <section class="layer-section panel" data-layer="2">
               <div class="layer-header">
                 <h3>Layer 3 · Parts &amp; Shapes</h3>
-                <span class="learned-tag"
-                  >learned from data, not hand-designed</span
-                >
               </div>
               <p class="layer-desc">
                 Deeper filters respond to object parts and abstract shapes.
