@@ -4,24 +4,31 @@
   --text: #1a1a1a;
   --muted: #6b6b6b;
   --border: #e5e5e2;
-  --accent: #B31B1B;
-  --accent-soft: rgba(179, 27, 27, 0.10);
+  --accent: #b31b1b;
+  --accent-soft: rgba(179, 27, 27, 0.1);
   --pos: rgba(56, 102, 196, 0.16);
   --neg: rgba(196, 64, 56, 0.16);
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
 }
 
-* { box-sizing: border-box; }
+* {
+  box-sizing: border-box;
+}
 
 /* Make the [hidden] attribute always win over author display rules. */
-[hidden] { display: none !important; }
+[hidden] {
+  display: none !important;
+}
 
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   background: var(--bg);
   color: var(--text);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue",
+    Arial, sans-serif;
   font-size: 15px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
@@ -33,7 +40,9 @@ main {
   padding: 40px 24px 64px;
 }
 
-header { margin-bottom: 28px; }
+header {
+  margin-bottom: 28px;
+}
 
 h1 {
   font-size: 28px;
@@ -65,11 +74,16 @@ h1 {
   border-radius: 999px;
   font-size: 14px;
   cursor: pointer;
-  transition: border-color .15s, background .15s, color .15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s,
+    color 0.15s;
   font-family: inherit;
 }
 
-.filter-btn:hover { border-color: #b3b3ad; }
+.filter-btn:hover {
+  border-color: #b3b3ad;
+}
 
 .filter-btn.active {
   background: var(--accent);
@@ -101,7 +115,7 @@ h1 {
   font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.10em;
+  letter-spacing: 0.1em;
   color: var(--muted);
   margin: 0 0 14px;
 }
@@ -121,7 +135,9 @@ h1 {
   touch-action: none;
 }
 
-.grid-canvas.output { cursor: default; }
+.grid-canvas.output {
+  cursor: default;
+}
 
 .grid-hint {
   font-size: 12px;
@@ -178,8 +194,12 @@ h1 {
   border-radius: 4px;
 }
 
-.kernel-cell.pos { background: var(--pos); }
-.kernel-cell.neg { background: var(--neg); }
+.kernel-cell.pos {
+  background: var(--pos);
+}
+.kernel-cell.neg {
+  background: var(--neg);
+}
 
 .kernel-note {
   font-size: 11px;
@@ -208,7 +228,8 @@ h1 {
 
 .calc-placeholder {
   color: var(--muted);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   font-size: 13px;
   text-align: center;
   max-width: 50ch;
@@ -225,7 +246,8 @@ h1 {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   margin-bottom: 6px;
 }
 
@@ -235,10 +257,18 @@ h1 {
   color: var(--text);
 }
 
-.calc-block .math .k-pos { color: #2f5fb3; }
-.calc-block .math .k-neg { color: #b3402f; }
-.calc-block .math .k-zero { color: #999; }
-.calc-block .math .v-zero { color: #bbb; }
+.calc-block .math .k-pos {
+  color: #2f5fb3;
+}
+.calc-block .math .k-neg {
+  color: #b3402f;
+}
+.calc-block .math .k-zero {
+  color: #999;
+}
+.calc-block .math .v-zero {
+  color: #bbb;
+}
 
 .calc-block .result-line {
   margin-top: 4px;
@@ -274,10 +304,14 @@ h1 {
   font-size: 14px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color .15s, background .15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
-.ctrl-btn:hover { border-color: #b3b3ad; }
+.ctrl-btn:hover {
+  border-color: #b3b3ad;
+}
 
 .ctrl-btn.primary {
   background: var(--accent);
@@ -297,7 +331,9 @@ h1 {
   cursor: pointer;
 }
 
-.upload-label input[type="file"] { display: none; }
+.upload-label input[type="file"] {
+  display: none;
+}
 
 .speed-group {
   display: flex;
@@ -332,18 +368,26 @@ h1 {
   cursor: pointer;
   font-family: inherit;
   margin-bottom: -1px;
-  transition: color .15s, border-color .15s;
+  transition:
+    color 0.15s,
+    border-color 0.15s;
 }
 
-.tab-btn:hover { color: var(--text); }
+.tab-btn:hover {
+  color: var(--text);
+}
 
 .tab-btn.active {
   color: var(--accent);
   border-bottom-color: var(--accent);
 }
 
-.tab-content { display: none; }
-.tab-content.active { display: block; }
+.tab-content {
+  display: none;
+}
+.tab-content.active {
+  display: block;
+}
 
 .conv-note {
   font-size: 12px;
@@ -387,7 +431,9 @@ h1 {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .cnn-error-title {
@@ -447,10 +493,14 @@ h1 {
   font-size: 13px;
   cursor: pointer;
   font-family: inherit;
-  transition: border-color .15s, background .15s;
+  transition:
+    border-color 0.15s,
+    background 0.15s;
 }
 
-.preset-btn:hover { border-color: #b3b3ad; }
+.preset-btn:hover {
+  border-color: #b3b3ad;
+}
 
 .preset-btn.active {
   background: var(--accent);
@@ -526,7 +576,9 @@ h1 {
   background: #1a1a1a;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
-  transition: transform .15s, box-shadow .15s;
+  transition:
+    transform 0.15s,
+    box-shadow 0.15s;
   border: 1px solid var(--border);
 }
 
@@ -554,7 +606,6 @@ h1 {
   justify-content: center;
   padding: 24px;
 }
-
 
 .modal-bg {
   position: absolute;
@@ -592,7 +643,9 @@ h1 {
   line-height: 1;
 }
 
-.modal-close:hover { color: var(--text); }
+.modal-close:hover {
+  color: var(--text);
+}
 
 .modal-canvas {
   display: block;
@@ -627,7 +680,9 @@ h1 {
     grid-template-columns: 1fr;
     gap: 16px;
   }
-  .kernel-panel { width: 100%; }
+  .kernel-panel {
+    width: 100%;
+  }
   .kernel {
     justify-content: center;
     grid-template-columns: repeat(3, 64px);
@@ -647,4 +702,63 @@ h1 {
     width: 240px;
     height: 240px;
   }
+}
+
+/* ─── Modal Canvas Overlay System ───────────────────── */
+.modal-canvas-container {
+  position: relative;
+  width: 280px;
+  height: 280px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #000;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+.modal-canvas-underlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  filter: grayscale(100%);
+  object-fit: cover;
+}
+
+.modal-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.75;
+  mix-blend-mode: screen; /* This blends the heatmap nicely over the grayscale */
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+.modal-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 280px;
+  padding: 0 4px;
+}
+
+.modal-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.modal-controls input[type="range"] {
+  flex: 1;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Ensure drawing canvas signals it is interactive */
+.cnn-input-canvas {
+  cursor: crosshair;
+  touch-action: none;
 }
