@@ -3,64 +3,159 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Convolution Explorer</title>
+<title>Convolution & CNN Explorer</title>
 <link rel="stylesheet" href="styles.css">
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
 </head>
 <body>
 <main>
   <header>
-    <h1>Convolution Explorer</h1>
-    <p class="subtitle">Draw on the input grid (or upload an image) and watch a 3×3 filter slide across to produce the output. Pick a filter to see what each kernel learns to detect.</p>
+    <h1>Convolution &amp; CNN Explorer</h1>
+    <p class="subtitle">Two views of how convolutional neural networks see — first by hand on a 16×16 grid, then through real learned filters inside MobileNet.</p>
   </header>
 
-  <div class="filters" id="filters"></div>
+  <nav class="tabs" role="tablist">
+    <button class="tab-btn active" data-tab="conv" role="tab" aria-selected="true">How Convolution Works</button>
+    <button class="tab-btn" data-tab="cnn" role="tab" aria-selected="false">CNN Feature Hierarchy</button>
+  </nav>
 
-  <div class="grids">
-    <div class="panel">
-      <h2>Input</h2>
-      <canvas id="input-canvas" class="grid-canvas" width="320" height="320"></canvas>
-      <div class="grid-hint">Click or drag to draw · right-click to erase</div>
-      <div class="brush-control">
-        <span>Brush</span>
-        <input type="range" id="brush" min="0" max="1" step="0.05" value="1">
+  <!-- ───── Tab 1: How Convolution Works ───── -->
+  <section class="tab-content active" id="tab-conv" role="tabpanel">
+    <div class="filters" id="filters"></div>
+
+    <div class="grids">
+      <div class="panel">
+        <h2>Input</h2>
+        <canvas id="input-canvas" class="grid-canvas" width="320" height="320"></canvas>
+        <div class="grid-hint">Click or drag to draw · right-click to erase</div>
+        <div class="brush-control">
+          <span>Brush</span>
+          <input type="range" id="brush" min="0" max="1" step="0.05" value="1">
+        </div>
+        <div class="grid-note">Uploaded images are converted to grayscale.</div>
       </div>
-      <div class="grid-note">Uploaded images are converted to grayscale.</div>
+
+      <div class="panel kernel-panel">
+        <h2>Kernel</h2>
+        <div class="kernel" id="kernel"></div>
+        <div class="kernel-note">Edges use zero padding.</div>
+      </div>
+
+      <div class="panel">
+        <h2>Output</h2>
+        <canvas id="output-canvas" class="grid-canvas output" width="320" height="320"></canvas>
+        <div class="grid-hint">Updates live as you draw</div>
+      </div>
     </div>
 
-    <div class="panel kernel-panel">
-      <h2>Kernel</h2>
-      <div class="kernel" id="kernel"></div>
-      <div class="kernel-note">Edges use zero padding.</div>
+    <div class="panel calc-panel">
+      <h2>Calculation</h2>
+      <div class="calc-content" id="calc-content">
+        <div class="calc-placeholder">Press <strong>▶ Animate</strong> to step through each output pixel. Pixel values are shown as 0–255.</div>
+      </div>
     </div>
 
-    <div class="panel">
-      <h2>Output</h2>
-      <canvas id="output-canvas" class="grid-canvas output" width="320" height="320"></canvas>
-      <div class="grid-hint">Updates live as you draw</div>
+    <div class="controls">
+      <button class="ctrl-btn" id="clear-btn">Clear</button>
+      <label class="ctrl-btn upload-label">
+        Upload Image
+        <input type="file" id="upload-input" accept="image/*">
+      </label>
+      <button class="ctrl-btn primary" id="play-btn">▶ Animate</button>
+      <div class="speed-group">
+        <span>Speed</span>
+        <input type="range" id="speed" min="15" max="350" step="5" value="80">
+      </div>
     </div>
-  </div>
 
-  <div class="panel calc-panel">
-    <h2>Calculation</h2>
-    <div class="calc-content" id="calc-content">
-      <div class="calc-placeholder">Press <strong>▶ Animate</strong> to step through each output pixel. Pixel values are shown as luminance (0–255).</div>
-    </div>
-  </div>
+    <p class="conv-note">These are example filters similar to what early CNN layers learn — but real CNNs discover their own kernels from data.</p>
+  </section>
 
-  <div class="controls">
-    <button class="ctrl-btn" id="clear-btn">Clear</button>
-    <label class="ctrl-btn upload-label">
-      Upload Image
-      <input type="file" id="upload-input" accept="image/*">
-    </label>
-    <button class="ctrl-btn primary" id="play-btn">▶ Animate</button>
-    <div class="speed-group">
-      <span>Speed</span>
-      <input type="range" id="speed" min="15" max="350" step="5" value="80">
+  <!-- ───── Tab 2: CNN Feature Hierarchy ───── -->
+  <section class="tab-content" id="tab-cnn" role="tabpanel" hidden>
+    <div id="cnn-loading" class="cnn-loading">
+      <div class="spinner" aria-hidden="true"></div>
+      <p class="cnn-loading-title">Loading MobileNet (~10MB)…</p>
+      <p class="cnn-loading-sub">Downloads once, then cached by your browser.</p>
     </div>
-  </div>
+
+    <div id="cnn-error" class="cnn-error" hidden>
+      <p class="cnn-error-title">Could not load MobileNet</p>
+      <p class="cnn-error-detail" id="cnn-error-msg"></p>
+    </div>
+
+    <div id="cnn-app" class="cnn-app" hidden>
+      <section class="cnn-input-panel panel">
+        <h2>Input Image</h2>
+        <canvas id="cnn-input-canvas" class="cnn-input-canvas" width="224" height="224"></canvas>
+        <div class="cnn-input-controls">
+          <label class="ctrl-btn upload-label">
+            Upload Image
+            <input type="file" id="cnn-upload" accept="image/*">
+          </label>
+          <div class="presets">
+            <button class="preset-btn" data-preset="portrait">Portrait</button>
+            <button class="preset-btn" data-preset="dog">Dog</button>
+            <button class="preset-btn" data-preset="building">Building</button>
+            <button class="preset-btn" data-preset="texture">Texture</button>
+          </div>
+        </div>
+      </section>
+
+      <div class="layers-flow">
+        <div class="flow-arrow" aria-hidden="true">↓</div>
+
+        <section class="layer-section panel" data-layer="0">
+          <div class="layer-header">
+            <h3>Layer 1 · Edges &amp; Orientations</h3>
+            <span class="learned-tag">learned from data, not hand-designed</span>
+          </div>
+          <p class="layer-desc">Earliest filters fire on simple structure: edges, corners, color gradients.</p>
+          <div class="activation-grid" id="layer-0-grid"></div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">↓</div>
+
+        <section class="layer-section panel" data-layer="1">
+          <div class="layer-header">
+            <h3>Layer 2 · Textures &amp; Patterns</h3>
+            <span class="learned-tag">learned from data, not hand-designed</span>
+          </div>
+          <p class="layer-desc">Mid-level filters combine edges into textures and repeating patterns.</p>
+          <div class="activation-grid" id="layer-1-grid"></div>
+        </section>
+
+        <div class="flow-arrow" aria-hidden="true">↓</div>
+
+        <section class="layer-section panel" data-layer="2">
+          <div class="layer-header">
+            <h3>Layer 3 · Parts &amp; Shapes</h3>
+            <span class="learned-tag">learned from data, not hand-designed</span>
+          </div>
+          <p class="layer-desc">Deeper filters respond to object parts and abstract shapes.</p>
+          <div class="activation-grid" id="layer-2-grid"></div>
+        </section>
+      </div>
+
+      <p class="disclaimer">Activations shown are extracted from a real MobileNet model pretrained on ImageNet. Each tile is one channel's response; brighter regions = stronger activation.</p>
+    </div>
+  </section>
 </main>
 
+<!-- Modal for enlarged activation maps -->
+<div id="cnn-modal" class="modal" hidden>
+  <div class="modal-bg" id="cnn-modal-bg"></div>
+  <div class="modal-card">
+    <button class="modal-close" id="cnn-modal-close" aria-label="Close">×</button>
+    <canvas id="cnn-modal-canvas" class="modal-canvas"></canvas>
+    <div class="modal-info">
+      <h4 id="cnn-modal-title">Activation</h4>
+      <p id="cnn-modal-desc"></p>
+    </div>
+  </div>
+</div>
+
 <script src="app.js"></script>
+<script src="cnn.js"></script>
 </body>
 </html>

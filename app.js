@@ -1,3 +1,35 @@
+// ─── Tabs ────────────────────────────────────────────────────
+(() => {
+  const STORAGE_TAB = 'explorer:tab';
+  const buttons = document.querySelectorAll('.tab-btn');
+  const contents = document.querySelectorAll('.tab-content');
+
+  function activateTab(target) {
+    buttons.forEach(b => {
+      const on = b.dataset.tab === target;
+      b.classList.toggle('active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    contents.forEach(c => {
+      const on = c.id === `tab-${target}`;
+      c.classList.toggle('active', on);
+      c.hidden = !on;
+    });
+    try { localStorage.setItem(STORAGE_TAB, target); } catch (_) {}
+    if (target === 'cnn' && typeof window.initCNN === 'function') {
+      window.initCNN();
+    }
+  }
+
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => activateTab(btn.dataset.tab));
+  });
+
+  const saved = (() => { try { return localStorage.getItem(STORAGE_TAB); } catch (_) { return null; } })();
+  if (saved === 'cnn' || saved === 'conv') activateTab(saved);
+})();
+
+// ─── Convolution Explorer (Tab 1) ────────────────────────────
 (() => {
   // ─── Constants & state ─────────────────────────────────────
   const N = 16;            // grid size
@@ -19,6 +51,32 @@
   let animIndex = 0;
   let animTimer = null;
   let animSpeedMs = 80;
+
+  // ─── Persistence ───────────────────────────────────────────
+  const STORAGE = {
+    FILTER: 'conv:filter',
+    BRUSH: 'conv:brush',
+    INPUT: 'conv:input',
+  };
+  let saveScheduled = false;
+  function saveInputSoon() {
+    if (saveScheduled) return;
+    saveScheduled = true;
+    requestAnimationFrame(() => {
+      saveScheduled = false;
+      try { localStorage.setItem(STORAGE.INPUT, JSON.stringify(Array.from(input))); } catch (_) {}
+    });
+  }
+  function loadInput() {
+    try {
+      const raw = localStorage.getItem(STORAGE.INPUT);
+      if (!raw) return false;
+      const arr = JSON.parse(raw);
+      if (!Array.isArray(arr) || arr.length !== N * N) return false;
+      for (let i = 0; i < N * N; i++) input[i] = arr[i];
+      return true;
+    } catch (_) { return false; }
+  }
 
   // ─── Filter definitions ────────────────────────────────────
   const FILTERS = {
@@ -165,6 +223,7 @@
   function paintAt(r, c, v) {
     if (input[r * N + c] === v) return false;
     input[r * N + c] = v;
+    saveInputSoon();
     return true;
   }
 
@@ -221,6 +280,7 @@
     for (const btn of filtersEl.querySelectorAll('.filter-btn')) {
       btn.classList.toggle('active', btn.dataset.filter === key);
     }
+    try { localStorage.setItem(STORAGE.FILTER, key); } catch (_) {}
     drawKernel();
     refreshLive();
   }
@@ -274,6 +334,7 @@
   const brushInput = document.getElementById('brush');
   brushInput.addEventListener('input', () => {
     brushIntensity = parseFloat(brushInput.value);
+    try { localStorage.setItem(STORAGE.BRUSH, String(brushIntensity)); } catch (_) {}
   });
 
   playBtn.addEventListener('click', () => {
@@ -372,6 +433,7 @@
   document.getElementById('clear-btn').addEventListener('click', () => {
     stopAnimation();
     input.fill(0);
+    saveInputSoon();
     refreshLive();
   });
 
@@ -404,6 +466,7 @@
         input[i] = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
       }
       URL.revokeObjectURL(url);
+      saveInputSoon();
       refreshLive();
       e.target.value = '';
     };
@@ -431,6 +494,15 @@
     }
   }
 
-  seed();
-  setFilter('edge');
+  // Restore previous session (input grid, brush, filter) — fall back to defaults.
+  if (!loadInput()) seed();
+
+  const savedBrush = (() => { try { return localStorage.getItem(STORAGE.BRUSH); } catch (_) { return null; } })();
+  if (savedBrush != null && !Number.isNaN(parseFloat(savedBrush))) {
+    brushIntensity = parseFloat(savedBrush);
+    brushInput.value = brushIntensity;
+  }
+
+  const savedFilter = (() => { try { return localStorage.getItem(STORAGE.FILTER); } catch (_) { return null; } })();
+  setFilter(FILTERS[savedFilter] ? savedFilter : 'edge');
 })();
