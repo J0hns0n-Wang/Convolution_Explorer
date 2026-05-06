@@ -1,6 +1,7 @@
 (() => {
   // ─── Config ────────────────────────────────────────────────
-  const MODEL_URL = 'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_1.0_224/model.json';
+  const MODEL_URL  = 'https://storage.googleapis.com/tfjs-models/tfjs/mobilenet_v1_1.0_224/model.json';
+  const LABELS_URL = 'https://storage.googleapis.com/download.tensorflow.org/data/ImageNetLabels.txt';
   const INPUT_SIZE = 224;
   let numTiles = 12;
 
@@ -8,23 +9,29 @@
   const LAYER_NAMES = ['conv_pw_1_relu', 'conv_pw_5_relu', 'conv_pw_11_relu'];
   const STORAGE_PRESET = 'cnn:preset';
 
-  // Receptive field sizes (px in original 224×224 input) are approximate,
-  // calculated by tracing strides+kernel sizes through MobileNet v1.
+  // Receptive field params: stride from 224×224 input, RF size in input pixels.
+  // Computed by tracing conv+depthwise kernel sizes and strides through MobileNet v1.
+  const RF_PARAMS = [
+    { stride: 2,  rf: 7   }, // Layer 1: 112×112 feature map
+    { stride: 8,  rf: 43  }, // Layer 2: 28×28  feature map
+    { stride: 32, rf: 219 }, // Layer 3: 7×7    feature map
+  ];
+
   const LAYER_INFO = [
     {
       title: 'Layer 1 · Edges & Orientations',
-      desc: 'The first learned layer responds to simple local structure: edges at various angles, color transitions, and corners. Each filter\'s receptive field covers only ~5 px of the original image — it is nearly blind to context.',
-      rf: 5,
+      desc: 'The first learned layer responds to simple local structure: edges at various angles, color transitions, and corners. Each filter\'s receptive field covers only ~7 px of the original image — it is nearly blind to context.',
+      rf: 7,
     },
     {
       title: 'Layer 2 · Textures & Patterns',
-      desc: 'Mid-network filters combine many edge detectors into textures — grids, curves, stripes, spots. Each now "sees" a ~35 px window, so it can reason about local geometry.',
-      rf: 35,
+      desc: 'Mid-network filters combine many edge detectors into textures — grids, curves, stripes, spots. Each now "sees" a ~43 px window, so it can reason about local geometry.',
+      rf: 43,
     },
     {
       title: 'Layer 3 · Parts & Shapes',
-      desc: 'Deep filters respond to object parts and abstract shapes assembled from many textures. Each filter\'s receptive field spans ~115 px — more than half the image — letting it recognise whole structures.',
-      rf: 115,
+      desc: 'Deep filters respond to object parts and abstract shapes assembled from many textures. Each filter\'s receptive field spans ~219 px — nearly the full image — letting it recognise whole structures.',
+      rf: 219,
     },
   ];
 
@@ -60,41 +67,63 @@
   let activationModel = null;
   let inited = false;
   let inferenceInFlight = false;
-  let pendingInference = false; // queued while in-flight
+  let pendingInference = false;
+  let imagenetLabels = [];
+  let lastPredData = null; // re-render predictions when labels finally load
 
-  const layerData     = [null, null, null]; // Float32Array, NHWC
-  const layerShape    = [null, null, null]; // [1, H, W, C]
-  const layerChannels = [null, null, null]; // selected channel indices
+  const layerData     = [null, null, null]; // Float32Array per layer
+  const layerShape    = [null, null, null]; // [1, H, W, C] per layer
+  const layerChannels = [null, null, null]; // selected channel indices per layer
 
-  let revealedLayers = 0; // layers 1+ are locked until student unlocks them
+  let revealedLayers = 0;
 
   // Draw mode
   let cnnDrawMode = false;
   let isDrawingCNN = false;
-  let cnnBaseImageData = null; // canvas snapshot before user draws
+  let cnnBaseImageData = null;
   let cnnDrawDebounce = null;
   const CNN_BRUSH_RADIUS = 14;
 
   // Modal nav
   let modalLayerIdx = -1;
   let modalChannelPos = 0;
-  let modalInputSnapshot = null; // ImageData captured at modal-open time
+  let modalInputSnapshot = null;
 
   // ─── DOM refs ──────────────────────────────────────────────
   const $loading     = () => document.getElementById('cnn-loading');
   const $error       = () => document.getElementById('cnn-error');
   const $app         = () => document.getElementById('cnn-app');
   const $inputCanvas = () => document.getElementById('cnn-input-canvas');
+  const $rfCanvas    = () => document.getElementById('cnn-rf-canvas');
+
+  // ─── ImageNet labels ───────────────────────────────────────
+  async function fetchLabels() {
+    try {
+      const res = await fetch(LABELS_URL);
+      const text = await res.text();
+      const lines = text.trim().split('\n');
+      // First line is "background"; the next 1000 are the ImageNet classes.
+      imagenetLabels = lines.slice(1, 1001).map(l => l.trim());
+      // If predictions already arrived before labels, render them now.
+      if (lastPredData) renderPredictions(lastPredData);
+    } catch (err) {
+      console.warn('Could not load ImageNet labels:', err);
+    }
+  }
 
   // ─── Init ──────────────────────────────────────────────────
   async function initCNN() {
     if (inited) return;
     inited = true;
 
+    fetchLabels(); // non-blocking; labels arrive whenever the fetch completes
+
     try {
       const baseModel = await tf.loadLayersModel(MODEL_URL);
-      const outputs = LAYER_NAMES.map(name => baseModel.getLayer(name).output);
-      activationModel = tf.model({ inputs: baseModel.inputs, outputs });
+      const layerOutputs = LAYER_NAMES.map(name => baseModel.getLayer(name).output);
+      // Include the model's own softmax output so we can show top-5 predictions.
+      const predOutput = baseModel.outputs[0]; // shape [1, 1000]
+      activationModel = tf.model({ inputs: baseModel.inputs, outputs: [...layerOutputs, predOutput] });
 
       // Warmup so first real call is fast.
       tf.tidy(() => {
@@ -123,7 +152,6 @@
 
   // ─── Step-by-step layer reveals ────────────────────────────
   function buildLayerLocks() {
-    // data-layer="1" and "2" = "Layer 2" and "Layer 3" in UI start locked.
     for (let i = 1; i < 3; i++) {
       const section = document.querySelector(`.layer-section[data-layer="${i}"]`);
       if (!section) continue;
@@ -191,7 +219,7 @@
   // ─── Draw mode ─────────────────────────────────────────────
   function setCNNDrawMode(active) {
     cnnDrawMode = active;
-    const canvas  = $inputCanvas();
+    const canvas   = $inputCanvas();
     const drawBtn  = document.getElementById('cnn-draw-btn');
     const clearBtn = document.getElementById('cnn-clear-draw-btn');
     if (canvas)   canvas.classList.toggle('cnn-draw-active', active);
@@ -259,6 +287,43 @@
         }
       });
     }
+  }
+
+  // ─── Receptive field overlay ───────────────────────────────
+  // Shows a dim vignette over the input image with a bright cutout showing
+  // exactly which input region a hovered activation tile can "see".
+  function showRFHighlight(layerIdx, ax, ay) {
+    const rfCanvas = $rfCanvas();
+    if (!rfCanvas) return;
+    const { stride, rf } = RF_PARAMS[layerIdx];
+    const cx   = (ax + 0.5) * stride;
+    const cy   = (ay + 0.5) * stride;
+    const half = rf / 2;
+    const x1 = Math.max(0, cx - half);
+    const y1 = Math.max(0, cy - half);
+    const x2 = Math.min(INPUT_SIZE, cx + half);
+    const y2 = Math.min(INPUT_SIZE, cy + half);
+
+    const ctx = rfCanvas.getContext('2d');
+    ctx.clearRect(0, 0, rfCanvas.width, rfCanvas.height);
+
+    // Dim the whole image.
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fillRect(0, 0, rfCanvas.width, rfCanvas.height);
+
+    // Punch a transparent window over the receptive field region.
+    ctx.clearRect(x1, y1, x2 - x1, y2 - y1);
+
+    // Highlight border around the RF window.
+    ctx.strokeStyle = 'rgba(255, 220, 50, 0.95)';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+  }
+
+  function clearRFHighlight() {
+    const rfCanvas = $rfCanvas();
+    if (!rfCanvas) return;
+    rfCanvas.getContext('2d').clearRect(0, 0, rfCanvas.width, rfCanvas.height);
   }
 
   // ─── Wire modal (runs immediately so it's always dismissable) ─
@@ -335,7 +400,6 @@
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
     ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
-    // Save clean snapshot so "Clear Drawing" can restore it.
     cnnBaseImageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
   }
 
@@ -364,18 +428,51 @@
     }
 
     try {
-      for (let i = 0; i < outs.length; i++) {
+      // outs[0..2] = layer activation maps; outs[3] = softmax predictions
+      for (let i = 0; i < 3; i++) {
         layerData[i]  = await outs[i].data();
         layerShape[i] = outs[i].shape.slice();
       }
-      // Render all layers; locked ones display under their overlay.
+      const predData = await outs[3].data();
+
       for (let i = 0; i < 3; i++) renderLayer(i);
+      renderPredictions(predData);
     } finally {
       outs.forEach(t => t.dispose());
       inferenceInFlight = false;
-      // Flush any queued call (e.g. draw-mode debounce that arrived during inference).
       if (pendingInference) runInference();
     }
+  }
+
+  // ─── Predictions panel ─────────────────────────────────────
+  function renderPredictions(predData) {
+    lastPredData = predData;
+    const el = document.getElementById('cnn-pred-list');
+    if (!el) return;
+
+    if (!imagenetLabels.length) {
+      el.innerHTML = '<p class="pred-placeholder">Labels loading…</p>';
+      return;
+    }
+
+    const indexed = Array.from(predData).map((v, i) => ({ v, i }));
+    indexed.sort((a, b) => b.v - a.v);
+    const top5 = indexed.slice(0, 5);
+
+    el.innerHTML = top5.map(({ v, i }) => {
+      const label    = imagenetLabels[i] || `class ${i}`;
+      const pct      = (v * 100).toFixed(1);
+      const barWidth = Math.min(100, v * 100).toFixed(1);
+      return `<div class="pred-row">
+        <div class="pred-row-top">
+          <span class="pred-label" title="${label}">${label}</span>
+          <span class="pred-pct">${pct}%</span>
+        </div>
+        <div class="pred-bar-track">
+          <div class="pred-bar-fill" style="width:${barWidth}%"></div>
+        </div>
+      </div>`;
+    }).join('');
   }
 
   // ─── Channel variance selection ────────────────────────────
@@ -396,7 +493,7 @@
     return stats.slice(0, Math.min(count, C)).map(s => s.ch).sort((a, b) => a - b);
   }
 
-  // ─── Render one activation channel → canvas, return {min,max} ──
+  // ─── Render one activation channel → canvas ────────────────
   function renderActivationToCanvas(canvas, data, shape, ch) {
     const [, H, W, C] = shape;
     canvas.width = W; canvas.height = H;
@@ -412,8 +509,8 @@
     const img = ctx.createImageData(W, H);
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
       const [r, g, b] = viridis((data[y * W * C + x * C + ch] - mn) / range);
-      const i = (y * W + x) * 4;
-      img.data[i] = r; img.data[i+1] = g; img.data[i+2] = b; img.data[i+3] = 255;
+      const idx = (y * W + x) * 4;
+      img.data[idx] = r; img.data[idx+1] = g; img.data[idx+2] = b; img.data[idx+3] = 255;
     }
     ctx.putImageData(img, 0, 0);
     return { min: mn, max: mx };
@@ -475,7 +572,17 @@
       const canvas = document.createElement('canvas');
       canvas.className = 'activation-map';
       const { min, max } = renderActivationToCanvas(canvas, data, shape, ch);
-      canvas.title = `Ch. ${ch}  ·  range ${min.toFixed(2)} → ${max.toFixed(2)}  ·  click to enlarge`;
+      canvas.title = `Ch. ${ch}  ·  range ${min.toFixed(2)} → ${max.toFixed(2)}  ·  hover to see receptive field · click to enlarge`;
+
+      // RF hover: dim the input image and show a cutout for the RF region.
+      canvas.addEventListener('mousemove', e => {
+        const rect = canvas.getBoundingClientRect();
+        const ax = Math.floor((e.clientX - rect.left) / rect.width  * canvas.width);
+        const ay = Math.floor((e.clientY - rect.top)  / rect.height * canvas.height);
+        showRFHighlight(idx, ax, ay);
+      });
+      canvas.addEventListener('mouseleave', clearRFHighlight);
+
       canvas.addEventListener('click', () => openModal(idx, ch));
 
       const label = document.createElement('div');
@@ -499,7 +606,6 @@
     const pos = channels.indexOf(ch);
     modalChannelPos = pos >= 0 ? pos : 0;
 
-    // Capture the current input state (including any drawing) for the underlay.
     const inputC = $inputCanvas();
     modalInputSnapshot = inputC
       ? inputC.getContext('2d').getImageData(0, 0, inputC.width, inputC.height)
@@ -519,13 +625,11 @@
     const shape = layerShape[modalLayerIdx];
     if (!data || !shape) return;
 
-    // Activation overlay canvas.
     const overlayCanvas = document.getElementById('cnn-modal-canvas');
     const { min, max } = renderActivationToCanvas(overlayCanvas, data, shape, ch);
     const slider = document.getElementById('cnn-overlay-opacity');
     if (slider) overlayCanvas.style.opacity = slider.value;
 
-    // Input underlay canvas — show image captured when modal opened.
     const underlayCanvas = document.getElementById('cnn-modal-input');
     if (underlayCanvas && modalInputSnapshot) {
       underlayCanvas.width  = modalInputSnapshot.width;
@@ -533,7 +637,6 @@
       underlayCanvas.getContext('2d').putImageData(modalInputSnapshot, 0, 0);
     }
 
-    // Per-pixel active% for this specific channel.
     const [, H, W, C] = shape;
     let activePx = 0;
     for (let y = 0; y < H; y++) for (let x = 0; x < W; x++)
@@ -550,7 +653,6 @@
       `${activePct}% of spatial positions active (non-zero after ReLU)` +
       `</span>`;
 
-    // Nav state.
     const prevBtn = document.getElementById('cnn-modal-prev');
     const nextBtn = document.getElementById('cnn-modal-next');
     const counter = document.getElementById('cnn-modal-counter');
@@ -570,6 +672,7 @@
   function closeModal() {
     const modal = document.getElementById('cnn-modal');
     if (modal) modal.hidden = true;
+    clearRFHighlight();
   }
 
   // ─── Expose to app.js for lazy init on tab switch ──────────

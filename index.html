@@ -4,6 +4,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Convolution & CNN Explorer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css" />
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.10.0/dist/tf.min.js"></script>
   </head>
@@ -87,19 +90,47 @@
           <div class="dim-layout">
             <div class="dim-sliders">
               <div class="dim-slider-row">
-                <label class="dim-label">Stride <span class="c-S">S</span> = <strong id="stride-val">1</strong></label>
-                <input type="range" id="stride" min="1" max="4" step="1" value="1" />
+                <label class="dim-label"
+                  >Stride <span class="c-S">S</span> =
+                  <strong id="stride-val">1</strong></label
+                >
+                <input
+                  type="range"
+                  id="stride"
+                  min="1"
+                  max="4"
+                  step="1"
+                  value="1"
+                />
               </div>
               <div class="dim-slider-row">
-                <label class="dim-label">Padding <span class="c-P">P</span> = <strong id="padding-val">0</strong></label>
-                <input type="range" id="padding" min="0" max="3" step="1" value="0" />
+                <label class="dim-label"
+                  >Padding <span class="c-P">P</span> =
+                  <strong id="padding-val">0</strong></label
+                >
+                <input
+                  type="range"
+                  id="padding"
+                  min="0"
+                  max="3"
+                  step="1"
+                  value="0"
+                />
               </div>
               <div class="conv-presets">
                 <span class="presets-label">Presets:</span>
-                <button class="conv-preset-btn active" data-p="0" data-s="1">Valid</button>
-                <button class="conv-preset-btn" data-p="1" data-s="1">Same</button>
-                <button class="conv-preset-btn" data-p="0" data-s="2">Halving</button>
-                <button class="conv-preset-btn" data-p="1" data-s="2">Strided</button>
+                <button class="conv-preset-btn active" data-p="0" data-s="1">
+                  Valid
+                </button>
+                <button class="conv-preset-btn" data-p="1" data-s="1">
+                  Same
+                </button>
+                <button class="conv-preset-btn" data-p="0" data-s="2">
+                  Halving
+                </button>
+                <button class="conv-preset-btn" data-p="1" data-s="2">
+                  Strided
+                </button>
               </div>
             </div>
             <div class="dim-formula" id="dim-formula"></div>
@@ -110,7 +141,8 @@
           <h2>Calculation</h2>
           <div class="calc-content" id="calc-content">
             <div class="calc-placeholder">
-              Press <strong>▶ Animate</strong> or <strong>Step</strong> to walk through each output pixel. Values shown as 0–255.
+              Press <strong>▶ Animate</strong> or <strong>Step</strong> to walk
+              through each output pixel. Values shown as 0–255.
             </div>
           </div>
         </div>
@@ -158,39 +190,64 @@
         </div>
 
         <div id="cnn-app" class="cnn-app" hidden>
-          <section class="cnn-input-panel panel">
-            <h2>Input Image</h2>
-            <canvas
-              id="cnn-input-canvas"
-              class="cnn-input-canvas"
-              width="224"
-              height="224"
-            ></canvas>
-            <div class="cnn-input-controls">
-              <label class="ctrl-btn upload-label">
-                Upload Image
-                <input type="file" id="cnn-upload" accept="image/*" />
-              </label>
-              <div class="presets">
-                <button class="preset-btn" data-preset="portrait">
-                  Portrait
-                </button>
-                <button class="preset-btn" data-preset="dog">Dog</button>
-                <button class="preset-btn" data-preset="building">
-                  Building
-                </button>
-                <button class="preset-btn" data-preset="texture">
-                  Texture
-                </button>
+          <!-- Top row: input + predictions side by side -->
+          <div class="cnn-top-row">
+            <section class="cnn-input-panel panel">
+              <h2>Input Image</h2>
+              <!-- RF overlay sits on top of the canvas; pointer-events:none lets draw mode work -->
+              <div class="cnn-canvas-wrap">
+                <canvas
+                  id="cnn-input-canvas"
+                  class="cnn-input-canvas"
+                  width="224"
+                  height="224"
+                ></canvas>
+                <canvas
+                  id="cnn-rf-canvas"
+                  class="cnn-rf-overlay"
+                  width="224"
+                  height="224"
+                ></canvas>
               </div>
-              <div class="cnn-draw-controls">
-                <button class="ctrl-btn" id="cnn-draw-btn">✏ Draw</button>
-                <button class="ctrl-btn" id="cnn-clear-draw-btn" hidden>
-                  Clear Drawing
-                </button>
+              <div class="cnn-input-controls">
+                <label class="ctrl-btn upload-label">
+                  Upload Image
+                  <input type="file" id="cnn-upload" accept="image/*" />
+                </label>
+                <div class="presets">
+                  <button class="preset-btn" data-preset="portrait">
+                    Portrait
+                  </button>
+                  <button class="preset-btn" data-preset="dog">Dog</button>
+                  <button class="preset-btn" data-preset="building">
+                    Building
+                  </button>
+                  <button class="preset-btn" data-preset="texture">
+                    Texture
+                  </button>
+                </div>
+                <div class="cnn-draw-controls">
+                  <button class="ctrl-btn" id="cnn-draw-btn">✏ Draw</button>
+                  <button class="ctrl-btn" id="cnn-clear-draw-btn" hidden>
+                    Clear Drawing
+                  </button>
+                </div>
               </div>
-            </div>
-          </section>
+            </section>
+
+            <!-- Predictions panel: top-5 ImageNet classes -->
+            <section class="panel cnn-pred-panel" id="cnn-pred-panel">
+              <h2>Predictions</h2>
+              <div class="pred-list" id="cnn-pred-list">
+                <p class="pred-placeholder">
+                  Load an image to see what MobileNet predicts.
+                </p>
+              </div>
+              <p class="pred-note">
+                Top-5 ImageNet classes · MobileNet V1 · 1000 classes
+              </p>
+            </section>
+          </div>
 
           <div class="layers-flow">
             <div class="flow-arrow" aria-hidden="true">↓</div>
